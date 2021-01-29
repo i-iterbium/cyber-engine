@@ -1,0 +1,480 @@
+swagger: "2.0"
+info:
+  description: CyberEngine
+  version: 1.0.2
+  title: CyberEngine
+host: localhost:65433
+basePath: /api/v1
+schemes:
+  - http
+produces:
+  - application/json
+consumes:
+  - application/json
+definitions:
+  Error:
+    description: Модель ошибки
+    required:
+      - code
+      - message
+    properties:
+      code:
+        description: Код ошибки
+        type: integer
+        format: int64
+        example: 1001
+      message:
+        description: Текст ошибки
+        type: string
+        example: Запрашиваемый ресурс не найден
+  AuthData:
+    description: Модель данных новой сессии
+    properties:
+      phone:
+        description: Номер телефона
+        type: integer
+        format: int64
+        example: 79110007777
+        x-go-custom-tag: sql:"phone"
+        x-nullable: true
+      password:
+        description: Пароль
+        type: string
+        minLength: 6
+        example: qwerty123
+        x-go-custom-tag: sql:"password"
+        x-nullable: true
+      email:
+        description: Электронная почта
+        type: string
+        format: email
+        maxLength: 50
+        example: email@mail.ru
+        x-go-custom-tag: sql:"email"
+        x-nullable: true
+  Session:
+    description: Модель сессии
+    properties:
+      userID:
+        description: Идентификатор пользователя
+        type: integer
+        format: int64
+        example: 1
+        x-go-custom-tag: sql:"user_id"
+        x-nullable: true
+      session:
+        description: Сессия
+        type: string
+        minLength: 32
+        maxLength: 32
+        example: "1c56b7c4db7d46f985f4aaf154fffdfe"
+        x-go-custom-tag: sql:"session"
+        x-nullable: true
+      CRSFToken:
+        description: CRSF-токен
+        type: string
+        minLength: 32
+        maxLength: 32
+        example: "1c56b7c4db7d46f985f4aaf154fffdfe"
+        x-go-custom-tag: sql:"csrf_token"
+        x-nullable: true
+      lifeTime:
+        description: Срок действия
+        type: string
+        format: date-time
+        example: "2020-05-18"
+        x-go-custom-tag: sql:"life_time"
+        x-nullable: true
+  BasicUser:
+    description: Пользователь
+    properties:
+      phone:
+        description: Номер телефона
+        type: integer
+        format: int64
+        minimum: 79000000001
+        maximum: 79999999999
+        example: 79876543210
+        x-go-custom-tag: sql:"phone"
+        x-nullable: true
+      email:
+        description: Адрес электронной почты
+        type: string
+        format: email
+        maxLength: 50
+        example: email@mail.ru
+        x-go-custom-tag: sql:"email"
+        x-nullable: true
+      name:
+        description: Имя
+        type: string
+        maxLength: 50
+        example: Иван
+        x-go-custom-tag: sql:"name"
+        x-nullable: true
+      sname:
+        description: Фамилия
+        type: string
+        maxLength: 50
+        example: Иванов
+        x-go-custom-tag: sql:"sname"
+        x-nullable: true
+      pname:
+        description: Отчество
+        type: string
+        maxLength: 50
+        example: Иванович
+        x-go-custom-tag: sql:"pname"
+        x-nullable: true
+      birthday:
+        description: Дата рождения
+        type: string
+        format: date
+        example: "2020-09-21"
+        x-go-custom-tag: sql:"birthday"
+        x-nullable: true
+      role:
+        description: Роль пользователя
+        type: string
+        x-go-custom-tag: sql:"role"
+        x-nullable: true
+  NewUser:
+    description: Данные для создания пользователя
+    allOf:
+      - $ref: "#/definitions/BasicUser"
+      - type: object
+        required:
+          - password
+          - registerType
+        properties:
+          password:
+            description: >
+              Пароль пользователя
+            type: string
+            example: qwerty123
+            x-go-custom-tag: sql:"password"
+            x-nullable: true
+          registerType:
+            description: >
+              Способ регистрации
+
+              * phone - по номеру телефона
+              * email  - по адресу электронной почты
+            type: string
+            enum:
+              - phone
+              - email
+            example: phone
+            x-go-custom-tag: sql:"register_type"
+  EditUser:
+    description: Данные для изменения пользователя
+    allOf:
+      - $ref: "#/definitions/BasicUser"
+      - type: object
+  User:
+    description: Пользователь
+    allOf:
+      - $ref: "#/definitions/BasicUser"
+      - type: object
+        required:
+          - ID
+          - status
+        properties:
+          ID:
+            description: Идентификатор
+            type: integer
+            example: 1
+            x-go-custom-tag: sql:"id"
+          status:
+            description: >
+              Статус пользователя
+
+              * new - новый
+              * active  - активный
+              * blocked  - заблокированный
+            type: string
+            enum:
+              - active
+              - blocked
+            example: active
+            x-go-custom-tag: sql:"status"
+            x-nullable: true
+          timeout:
+            description: Тайм-аут для кода подтверждения регистрации
+            type: integer
+            example: 1
+            x-go-custom-tag: sql:"timeout"
+  UserConfirmation:
+    description: Данные для подтверждения пользователя
+    allOf:
+      - type: object
+        required:
+          - confirmationType
+        properties:
+          phone:
+            description: Номер телефона
+            type: integer
+            format: int64
+            minimum: 79000000001
+            maximum: 79999999999
+            example: 79876543210
+            x-go-custom-tag: sql:"phone"
+            x-nullable: true
+          email:
+            description: Адрес электронной почты
+            type: string
+            format: email
+            maxLength: 50
+            example: email@mail.ru
+            x-go-custom-tag: sql:"email"
+            x-nullable: true
+          code:
+            description: >
+              Код подтверждения
+            type: string
+            example: 56744l
+            x-go-custom-tag: sql:"code"
+            x-nullable: true
+          confirmationType:
+            description: >
+              Тип подтверждения
+
+              * phone - по номеру телефона
+              * email  - по адресу электронной почты
+            type: string
+            enum:
+              - phone
+              - email
+            example: phone
+            x-go-custom-tag: sql:"register_type"
+paths:
+  /users:
+    post:
+      tags:
+        - Users
+      summary: Создает нового пользователя
+      operationId: createUser
+      description: Cоздает нового пользователя и возвращает его данные
+      parameters:
+        - name: user
+          in: body
+          description: Данные для создания пользователя
+          schema:
+            $ref: "#/definitions/NewUser"
+          required: true
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: "#/definitions/User"
+        400:
+          description: Переданы некорректные данные
+          schema:
+            $ref: "#/definitions/Error"
+        500:
+          description: Внутреняя ошибка сервера
+          schema:
+            $ref: "#/definitions/Error"
+        default:
+          description: Неожиданная ошибка
+          schema:
+            $ref: "#/definitions/Error"
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Возвращает данные пользователя по ID.
+      operationId: fetchUserByID
+      description: Возвращает данные пользователя по ID
+      parameters:
+        - name: id
+          in: path
+          description: Идентификатор пользователя
+          type: integer
+          format: int64
+          required: true
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: "#/definitions/User"
+        400:
+          description: Переданы некорректные данные
+          schema:
+            $ref: "#/definitions/Error"
+        500:
+          description: Внутреняя ошибка сервера
+          schema:
+            $ref: "#/definitions/Error"
+        default:
+          description: Неожиданная ошибка
+          schema:
+            $ref: "#/definitions/Error"
+    patch:
+      tags:
+        - Users
+      summary: Изменяет данные пользователя по ID.
+      operationId: updateUserByID
+      description: Изменяет данные пользователя по ID
+      parameters:
+        - name: id
+          in: path
+          description: Идентификатор пользователя
+          type: integer
+          format: int64
+          required: true
+        - name: user
+          in: body
+          description: Данные для изменения пользователя
+          schema:
+            $ref: "#/definitions/EditUser"
+          required: true
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: "#/definitions/User"
+        400:
+          description: Переданы некорректные данные
+          schema:
+            $ref: "#/definitions/Error"
+        500:
+          description: Внутреняя ошибка сервера
+          schema:
+            $ref: "#/definitions/Error"
+        default:
+          description: Неожиданная ошибка
+          schema:
+            $ref: "#/definitions/Error"
+  /userconfirmation:
+    post:
+      tags:
+        - UserConfirmation
+      summary: Подтверждение пользователя
+      operationId: userConfirmation
+      description: Подтверждение пользователя по коду
+      parameters:
+      - name: userConfirmation
+        in: body
+        description: Данные для подтверждения пользователя
+        schema:
+          $ref: "#/definitions/UserConfirmation"
+        required: true
+      responses:
+        200:
+          description: Пользователь подтвержден
+        400:
+          description: Некорректный запрос
+          schema:
+            $ref: "#/definitions/Error"
+        500:
+          description: Внутреняя ошибка сервера
+          schema:
+            $ref: "#/definitions/Error"
+        default:
+          description: Неожиданнная ошибка
+          schema:
+            $ref: "#/definitions/Error"
+    patch:
+      tags:
+          - UserConfirmation
+      summary: Отправка кода подтверждения
+      operationId: resendCode
+      description: Отправка кода подтверждения
+      parameters:
+      - name: resendCode
+        in: body
+        description: Данные для подтверждения пользователя
+        schema:
+          $ref: "#/definitions/UserConfirmation"
+        required: true
+      responses:
+        200:
+          description: Код выслан
+        400:
+          description: Некорректный запрос
+          schema:
+            $ref: "#/definitions/Error"
+        500:
+          description: Внутреняя ошибка сервера
+          schema:
+            $ref: "#/definitions/Error"
+        default:
+          description: Неожиданнная ошибка
+          schema:
+            $ref: "#/definitions/Error"
+  /sessions:
+    post:
+      tags:
+        - Sessions
+      summary: Создает пользовательскую сессию
+      operationId: createSession
+      description: Создает пользовательскую сессию
+      parameters:
+      - name: authData
+        in: body
+        description: Данные для создания сессии
+        schema:
+          $ref: "#/definitions/AuthData"
+        required: true
+      responses:
+        200:
+          description: Сессия успешно создана
+          schema:
+            $ref: "#/definitions/Session"
+        400:
+          description: Некорректный запрос
+          schema:
+            $ref: "#/definitions/Error"
+        500:
+          description: Внутреняя ошибка сервера
+          schema:
+            $ref: "#/definitions/Error"
+        default:
+          description: Неожиданнная ошибка
+          schema:
+            $ref: "#/definitions/Error"
+    patch:
+      tags:
+        - Sessions
+      summary: Обновляет пользовательскую сессию
+      operationId: updateSession
+      description: Обновляет пользовательскую сессию
+      responses:
+        200:
+          description: Сессия успешно обновлена
+          schema:
+            $ref: "#/definitions/Session"
+        400:
+          description: Некорректный запрос
+          schema:
+            $ref: "#/definitions/Error"
+        500:
+          description: Внутреняя ошибка сервера
+          schema:
+            $ref: "#/definitions/Error"
+        default:
+          description: Неожиданнная ошибка
+          schema:
+            $ref: "#/definitions/Error"
+    delete:
+      tags:
+        - Sessions
+      summary: Удаляет пользовательскую сессию
+      operationId: deleteSession
+      description: Удаляет пользовательскую сессию
+      responses:
+        200:
+          description: Сессия успешно удалена
+        400:
+          description: Некорректный запрос
+          schema:
+            $ref: "#/definitions/Error"
+        500:
+          description: Внутреняя ошибка сервера
+          schema:
+            $ref: "#/definitions/Error"
+        default:
+          description: Неожиданнная ошибка
+          schema:
+            $ref: "#/definitions/Error"
